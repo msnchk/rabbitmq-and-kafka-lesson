@@ -10,3 +10,6 @@
 ### Maven ###
 target/
 .mvn
+
+### Project ###
+src/main/
