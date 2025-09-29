@@ -4,9 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import kafka.config.KafkaConfig;
 import kafka.model.EventMessage;
-import org.apache.kafka.clients.admin.AdminClient;
-import org.apache.kafka.clients.admin.AdminClientConfig;
-import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.clients.admin.*;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -35,7 +33,7 @@ public class KafkaHelper {
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, KafkaConfig.BOOTSTRAP_SERVERS);
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, KafkaConfig.AUTO_OFFSET_RESET);
         props.put(ConsumerConfig.GROUP_ID_CONFIG, group);
         return new KafkaConsumer<>(props);
     }
@@ -62,18 +60,27 @@ public class KafkaHelper {
         return receivedMessages;
     }
 
-    public static void createTopic(String topicName) throws ExecutionException, InterruptedException {
-        try (AdminClient admin = AdminClient.create(
-                Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, KafkaConfig.BOOTSTRAP_SERVERS))) {
-            NewTopic newTopic = new NewTopic(topicName, 1, (short) 1);
-            admin.createTopics(Collections.singleton(newTopic)).all().get();
+    public static void createTopics(List<String> topicNames) throws ExecutionException, InterruptedException {
+        try (AdminClient admin = AdminClient.create(kafkaAdminProps())) {
+            List<NewTopic> newTopics = new ArrayList<>();
+            for (String name : topicNames) {
+                newTopics.add(new NewTopic(name, KafkaConfig.TOPIC_PARTITIONS, KafkaConfig.TOPIC_REPLICATION_FACTOR));
+            }
+            CreateTopicsResult result = admin.createTopics(newTopics);
+            result.all().get();
         }
     }
 
-    public static void deleteTopics(List<String> topics) throws ExecutionException, InterruptedException {
-        try (AdminClient admin = AdminClient.create(
-                Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, KafkaConfig.BOOTSTRAP_SERVERS))) {
-            admin.deleteTopics(topics).all().get();
+    public static void deleteTopics(List<String> topicNames) throws ExecutionException, InterruptedException {
+        try (AdminClient admin = AdminClient.create(kafkaAdminProps())) {
+            DeleteTopicsResult result = admin.deleteTopics(topicNames);
+            result.all().get();
         }
+    }
+
+    private static Properties kafkaAdminProps() {
+        Properties props = new Properties();
+        props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, KafkaConfig.BOOTSTRAP_SERVERS);
+        return props;
     }
 }

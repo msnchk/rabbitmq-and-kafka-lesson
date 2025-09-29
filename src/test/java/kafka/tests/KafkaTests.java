@@ -8,7 +8,7 @@ import kafka.helpers.MessagesGenerator;
 import kafka.model.EventMessage;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
-import org.testng.annotations.AfterMethod;
+import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 import org.testng.asserts.SoftAssert;
@@ -33,7 +33,7 @@ public class KafkaTests {
         String topicName = "transactions";
         int countOfMessages = 5;
 
-        KafkaHelper.createTopic(topicName);
+        KafkaHelper.createTopics(List.of(topicName));
         topicsToDelete.add(topicName);
         try (KafkaProducer<String, String> producer = KafkaHelper.createKafkaProducer();
              KafkaConsumer<String, String> consumer = KafkaHelper.createKafkaConsumer("group")) {
@@ -42,7 +42,6 @@ public class KafkaTests {
             Map<String, EventMessage> messages = MessagesGenerator.generateMessages(countOfMessages);
             KafkaHelper.sendMessages(messages, mapper, producer, topicName);
             producer.flush();
-
             Map<String, EventMessage> receivedMessages = KafkaHelper.getMessages(consumer, mapper);
 
             SoftAssert soft = new SoftAssert();
@@ -57,8 +56,7 @@ public class KafkaTests {
         String paymentsTopicName = "payments";
         int countOfMessages = 2;
 
-        KafkaHelper.createTopic(ordersTopicName);
-        KafkaHelper.createTopic(paymentsTopicName);
+        KafkaHelper.createTopics(List.of(ordersTopicName, paymentsTopicName));
         topicsToDelete.add(ordersTopicName);
         topicsToDelete.add(paymentsTopicName);
         try (KafkaProducer<String, String> producer = KafkaHelper.createKafkaProducer();
@@ -76,7 +74,6 @@ public class KafkaTests {
                 KafkaHelper.sendMessage(paymentMessage, mapper, producer, paymentsTopicName);
             }
             producer.flush();
-
             Map<String, EventMessage> receivedMessages = KafkaHelper.getMessages(consumer, mapper);
 
             SoftAssert soft = new SoftAssert();
@@ -89,9 +86,9 @@ public class KafkaTests {
     public void oneTopicShouldDeliverSameMessagesInTwoGroups() throws ExecutionException, InterruptedException, JsonProcessingException {
         String topicName = "user-actions";
         int countOfMessages = 2;
-        KafkaHelper.createTopic(topicName);
-        topicsToDelete.add(topicName);
 
+        KafkaHelper.createTopics(List.of(topicName));
+        topicsToDelete.add(topicName);
         try (KafkaProducer<String, String> producer = KafkaHelper.createKafkaProducer();
              KafkaConsumer<String, String> consumerA = KafkaHelper.createKafkaConsumer("groupA");
              KafkaConsumer<String, String> consumerB = KafkaHelper.createKafkaConsumer("groupB")) {
@@ -101,7 +98,6 @@ public class KafkaTests {
             Map<String, EventMessage> messages = MessagesGenerator.generateMessages(countOfMessages);
             KafkaHelper.sendMessages(messages, mapper, producer, topicName);
             producer.flush();
-
             Map<String, EventMessage> receivedMessagesA = KafkaHelper.getMessages(consumerA, mapper);
             Map<String, EventMessage> receivedMessagesB = KafkaHelper.getMessages(consumerB, mapper);
 
@@ -112,7 +108,7 @@ public class KafkaTests {
         }
     }
 
-    @AfterMethod
+    @AfterClass
     private void tearDown() throws ExecutionException, InterruptedException {
         KafkaHelper.deleteTopics(topicsToDelete);
     }
